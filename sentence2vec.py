@@ -26,7 +26,7 @@ def wakati_mecab(text):
 
 class SWEM():
     def __call__(self, text, mode):
-        vecs = self.w2v(text)
+        vecs = self.__w2v(text)
         if mode == "aver":
             return vecs.mean(axis=0)
         elif mode == "max":
@@ -34,12 +34,13 @@ class SWEM():
         elif mode == "concat":
             return np.hstack([vecs.mean(axis=0), vecs.max(axis=0)])
         elif mode == "hier_2":
-            return self.hier(vecs, 2)
+            return self.__hier(vecs, 2)
+        elif mode == "hier_3":
+            return self.__hier(vecs, 3)
 
-    def w2v(self, text):
+    def __w2v(self, text):
         sep_text = wakati_mecab(text)
         v = []
-        print(sep_text)
         for w in sep_text:
             try:
                 v.append(model_hottolink[w])
@@ -49,7 +50,7 @@ class SWEM():
             v.append(np.zeros(200))
         return np.array(v)
 
-    def hier(self, vecs, window):
+    def __hier(self, vecs, window):
         h, w = vecs.shape
         if h < window:
             return vecs.max(axis=0)
@@ -57,14 +58,14 @@ class SWEM():
         return v.max(axis=2)[0]
 
 
-def get_swem_vector(text, texts, sentence_embeding_method="aver"):
+def get_swem_vector(text):
     swem = SWEM()
     swem_hier_2_vecs = np.array(swem(text, "hier_2"))
     return swem_hier_2_vecs
 
 
 class SIF():
-    def sif_vector(self, texts, sentence_embeding_method="aver"):
+    def sif_vector(self, texts, sentence_embeding_method="mean"):
         docs = []
         for text in texts:
             docs.append(wakati_mecab(text))
@@ -74,10 +75,10 @@ class SIF():
             w2pw[k] = dictionary.cfs[dictionary.token2id[k]] / dictionary.num_pos
         a = 10 ** -3  # sif のパラメータ定数
         sentence_vectors = []
-        if sentence_embeding_method == "aver":
-            sentence_vectors = self.mean_vector(docs, texts, w2pw, a)
+        if sentence_embeding_method == "mean":
+            sentence_vectors = self.__mean_vector(docs, texts, w2pw, a)
         elif sentence_embeding_method == "hier":
-            sentence_vectors = self.hier_vector(docs, texts, w2pw, a, 2)
+            sentence_vectors = self.__hier_vector(docs, texts, w2pw, a, 2)
         if sentence_vectors == []:
             print("choice embeding method [mean, hier]")
             sys.exit()
@@ -89,7 +90,7 @@ class SIF():
         dictionary.save_as_text('deerwester_dict.txt')
         return sentence_vectors
 
-    def mean_vector(self, docs, texts, w2pw, a):
+    def __mean_vector(self, docs, texts, w2pw, a):
         sentence_vectors = []
         for doc in docs:
             sum_vec = np.zeros(200)
@@ -104,7 +105,7 @@ class SIF():
                 sentence_vectors.append(np.zeros(200))
         return np.array(sentence_vectors)
 
-    def hier_vector(self, docs, texts, w2pw, a, window):
+    def __hier_vector(self, docs, texts, w2pw, a, window):
         sentence_vectors = []
         for doc in docs:
             vecs = []
@@ -134,10 +135,10 @@ def run():
     sif = SIF()
     texts = [
         "北海道行きたい",
-        "北海道に帰ろう"
+        "北海道旅行",
     ]
     vec = sif.sif_vector(texts, "hier")
-    print(cos_sim(vec[0], vec[0]))
+    print(cos_sim(vec[0], vec[1]))
 
 
 if __name__ == "__main__":
